@@ -47,8 +47,14 @@ function TransactionTable({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-baseline justify-between">
         <CardTitle>Historique</CardTitle>
+        {transactions.length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {transactions.length} transaction
+            {transactions.length > 1 ? "s" : ""}
+          </span>
+        )}
       </CardHeader>
       <CardContent>
         {transactions.length === 0 ? (
@@ -69,8 +75,8 @@ function TransactionTable({
             </TableHeader>
             <TableBody>
               {transactions.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="whitespace-nowrap">
+                <TableRow key={t.id} className="group">
+                  <TableCell className="whitespace-nowrap text-muted-foreground">
                     {formatDate(t.date)}
                   </TableCell>
                   <TableCell>{t.category}</TableCell>
@@ -94,8 +100,10 @@ function TransactionTable({
                     </TableCell>
                   )}
                   <TableCell
-                    className={`text-right font-medium whitespace-nowrap ${
-                      t.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
+                    className={`text-right font-medium whitespace-nowrap tabular-nums ${
+                      t.amount >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-red-600 dark:text-red-400"
                     }`}
                   >
                     {formatSignedKamas(t.amount)}
@@ -109,6 +117,7 @@ function TransactionTable({
                       size="icon"
                       onClick={() => remove(t.id)}
                       aria-label="Supprimer"
+                      className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
                     >
                       <Trash2 className="w-4 h-4 text-muted-foreground hover:text-red-600 dark:hover:text-red-400" />
                     </Button>

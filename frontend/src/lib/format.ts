@@ -31,5 +31,12 @@ const dateFormatter = new Intl.DateTimeFormat("fr-FR", {
 export function formatDate(isoDate: string): string {
   const date = new Date(`${isoDate}T00:00:00`);
   if (Number.isNaN(date.getTime())) return isoDate;
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.round(
+    (startOfToday.getTime() - date.getTime()) / 86400000
+  );
+  if (diffDays === 0) return "Aujourd'hui";
+  if (diffDays === 1) return "Hier";
   return dateFormatter.format(date);
 }
