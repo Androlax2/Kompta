@@ -3,7 +3,6 @@ import ActivityDetail from "@/components/ActivityDetail";
 import ActivityList from "@/components/ActivityList";
 import SummaryCards from "@/components/SummaryCards";
 import ThemeToggle from "@/components/ThemeToggle";
-import TransactionForm from "@/components/TransactionForm";
 import TransactionTable from "@/components/TransactionTable";
 import {
   GetSummary,
@@ -77,13 +76,10 @@ function App() {
             <SummaryCards summary={summary} />
 
             <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
-              <div className="space-y-6">
-                <TransactionForm onAdded={refresh} activities={activities} />
-                <ActivityList
-                  activities={activities}
-                  onOpen={setActiveActivityId}
-                />
-              </div>
+              <ActivityList
+                activities={activities}
+                onOpen={setActiveActivityId}
+              />
               <TransactionTable
                 transactions={transactions}
                 activityNames={activityNames}

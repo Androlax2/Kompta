@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import ItemsPanel from "@/components/ItemsPanel";
 import SummaryCards from "@/components/SummaryCards";
-import TransactionForm from "@/components/TransactionForm";
 import TransactionTable from "@/components/TransactionTable";
 import {
   DeleteActivity,
@@ -110,15 +109,12 @@ function ActivityDetail({ activityId, onBack, onChanged }: ActivityDetailProps) 
         onError={setError}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
-        <TransactionForm fixedActivityId={activityId} onAdded={refreshAll} />
-        <TransactionTable
-          transactions={transactions}
-          hideActivityColumn
-          onChanged={refreshAll}
-          onError={setError}
-        />
-      </div>
+      <TransactionTable
+        transactions={transactions}
+        hideActivityColumn
+        onChanged={refreshAll}
+        onError={setError}
+      />
     </div>
   );
 }
