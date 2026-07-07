@@ -1,6 +1,7 @@
 export const CATEGORIES = [
   "Vente",
   "Achat",
+  "Forgemagie",
   "Métier",
   "Récolte",
   "Donjon",

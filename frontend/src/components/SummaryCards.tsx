@@ -1,10 +1,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatKamas } from "@/lib/format";
-import { main } from "../../wailsjs/go/models";
 import { Coins, TrendingDown, TrendingUp } from "lucide-react";
 
+interface SummaryStats {
+  balance: number;
+  totalIncome: number;
+  totalExpenses: number;
+  count: number;
+}
+
 interface SummaryCardsProps {
-  summary: main.Summary | null;
+  summary: SummaryStats | null;
 }
 
 function SummaryCards({ summary }: SummaryCardsProps) {

@@ -22,12 +22,19 @@ import { main } from "../../wailsjs/go/models";
 
 interface TransactionFormProps {
   onAdded: () => void;
+  activities?: main.ActivityWithStats[];
+  fixedActivityId?: number;
 }
 
-function TransactionForm({ onAdded }: TransactionFormProps) {
+function TransactionForm({
+  onAdded,
+  activities,
+  fixedActivityId,
+}: TransactionFormProps) {
   const [type, setType] = useState<"gain" | "depense">("gain");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
+  const [activityId, setActivityId] = useState("0");
   const [date, setDate] = useState(today());
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
@@ -52,6 +59,7 @@ function TransactionForm({ onAdded }: TransactionFormProps) {
           amount: type === "gain" ? parsed : -parsed,
           category,
           note: note.trim(),
+          activityId: fixedActivityId ?? Number(activityId),
           createdAt: "",
         })
       );
@@ -125,6 +133,25 @@ function TransactionForm({ onAdded }: TransactionFormProps) {
               </SelectContent>
             </Select>
           </div>
+
+          {fixedActivityId === undefined && (
+            <div className="space-y-2">
+              <Label>Activité (optionnel)</Label>
+              <Select value={activityId} onValueChange={setActivityId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Aucune</SelectItem>
+                  {(activities ?? []).map((a) => (
+                    <SelectItem key={a.id} value={String(a.id)}>
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="date">Date</Label>

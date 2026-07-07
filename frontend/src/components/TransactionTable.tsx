@@ -22,12 +22,18 @@ interface TransactionTableProps {
   transactions: main.Transaction[];
   onChanged: () => void;
   onError: (message: string) => void;
+  activityNames?: Map<number, string>;
+  hideActivityColumn?: boolean;
+  onActivityClick?: (id: number) => void;
 }
 
 function TransactionTable({
   transactions,
   onChanged,
   onError,
+  activityNames,
+  hideActivityColumn,
+  onActivityClick,
 }: TransactionTableProps) {
   async function remove(id: number) {
     if (!window.confirm("Supprimer cette transaction ?")) return;
@@ -55,6 +61,7 @@ function TransactionTable({
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Catégorie</TableHead>
+                {!hideActivityColumn && <TableHead>Activité</TableHead>}
                 <TableHead className="text-right">Montant</TableHead>
                 <TableHead>Note</TableHead>
                 <TableHead className="w-12" />
@@ -67,6 +74,25 @@ function TransactionTable({
                     {formatDate(t.date)}
                   </TableCell>
                   <TableCell>{t.category}</TableCell>
+                  {!hideActivityColumn && (
+                    <TableCell>
+                      {t.activityId !== 0 && activityNames?.has(t.activityId) ? (
+                        onActivityClick ? (
+                          <button
+                            type="button"
+                            onClick={() => onActivityClick(t.activityId)}
+                            className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground max-w-40 truncate hover:text-foreground"
+                          >
+                            {activityNames.get(t.activityId)}
+                          </button>
+                        ) : (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground max-w-40 truncate">
+                            {activityNames.get(t.activityId)}
+                          </span>
+                        )
+                      ) : null}
+                    </TableCell>
+                  )}
                   <TableCell
                     className={`text-right font-medium whitespace-nowrap ${
                       t.amount >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"
