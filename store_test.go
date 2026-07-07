@@ -557,3 +557,54 @@ func TestSearchDofusItemsErrors(t *testing.T) {
 		t.Error("expected error for HTTP 500")
 	}
 }
+
+func TestCountOpenItems(t *testing.T) {
+	store := openTestStore(t)
+	fm := findActivity(t, store, "Forgemagie")
+
+	n, err := store.CountOpenItems()
+	if err != nil || n != 0 {
+		t.Fatalf("expected 0 open items, got %d (err %v)", n, err)
+	}
+
+	a, _ := store.AddItem(fm.ID, "Objet A", 1000, "")
+	b, _ := store.AddItem(fm.ID, "Objet B", 2000, "")
+	if n, _ = store.CountOpenItems(); n != 2 {
+		t.Errorf("expected 2 open items, got %d", n)
+	}
+
+	if err := store.FinishItem(a.ID, 500); err != nil {
+		t.Fatalf("FinishItem: %v", err)
+	}
+	if n, _ = store.CountOpenItems(); n != 1 {
+		t.Errorf("expected 1 open item, got %d", n)
+	}
+
+	if err := store.FinishItem(b.ID, 2000); err != nil {
+		t.Fatalf("FinishItem: %v", err)
+	}
+	if n, _ = store.CountOpenItems(); n != 0 {
+		t.Errorf("expected 0 open items, got %d", n)
+	}
+}
+
+func TestWindowState(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	state := loadWindowState()
+	if state.Width != defaultWindowWidth || state.Height != defaultWindowHeight || state.HasPos {
+		t.Errorf("unexpected defaults: %+v", state)
+	}
+
+	saveWindowState(windowState{Width: 1400, Height: 900, X: 120, Y: 60, HasPos: true})
+	state = loadWindowState()
+	if state.Width != 1400 || state.Height != 900 || state.X != 120 || state.Y != 60 || !state.HasPos {
+		t.Errorf("expected round-trip, got %+v", state)
+	}
+
+	saveWindowState(windowState{Width: 10, Height: 10, HasPos: false})
+	state = loadWindowState()
+	if state.Width != defaultWindowWidth || state.Height != defaultWindowHeight {
+		t.Errorf("expected clamped defaults for absurd size, got %+v", state)
+	}
+}

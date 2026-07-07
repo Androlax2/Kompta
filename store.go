@@ -548,6 +548,14 @@ func (s *Store) ListItems(activityID int64) ([]ItemWithStats, error) {
 	return items, rows.Err()
 }
 
+// CountOpenItems returns how many items are still awaiting their
+// ending kamas snapshot (used by the quit guard).
+func (s *Store) CountOpenItems() (int64, error) {
+	var n int64
+	err := s.db.QueryRow("SELECT COUNT(*) FROM items WHERE end_kamas IS NULL").Scan(&n)
+	return n, err
+}
+
 // FinishItem records the ending kamas snapshot. The difference with
 // the starting snapshot becomes a transaction tagged to the item
 // (a dépense in the normal case).

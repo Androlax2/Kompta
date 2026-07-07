@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="coin" cx="0.38" cy="0.32" r="0.85">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="0.55" stop-color="#f5b93c"/>
+      <stop offset="1" stop-color="#d4901a"/>
+    </radialGradient>
+    <radialGradient id="rim" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0.82" stop-color="#b06e10"/>
+      <stop offset="1" stop-color="#8a530a"/>
+    </radialGradient>
+  </defs>
+
+  <!-- outer rim -->
+  <circle cx="512" cy="512" r="470" fill="url(#rim)"/>
+  <!-- coin face -->
+  <circle cx="512" cy="512" r="410" fill="url(#coin)"/>
+  <!-- inner engraved ring -->
+  <circle cx="512" cy="512" r="356" fill="none" stroke="#b06e10" stroke-width="14" opacity="0.55"/>
+
+  <!-- bold K -->
+  <g fill="#7c4a06">
+    <rect x="340" y="290" width="92" height="444" rx="18"/>
+    <path d="M 432 512 L 620 292 Q 634 276 656 282 L 700 294 Q 726 302 708 324 L 540 516 L 716 700 Q 734 720 708 730 L 662 744 Q 640 750 624 732 L 432 520 Z"/>
+  </g>
+  <!-- subtle highlight -->
+  <ellipse cx="400" cy="330" rx="190" ry="110" fill="#ffffff" opacity="0.18"/>
+</svg>

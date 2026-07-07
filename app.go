@@ -9,8 +9,9 @@ import (
 
 // App struct
 type App struct {
-	ctx   context.Context
-	store *Store
+	ctx           context.Context
+	store         *Store
+	initialWindow windowState
 }
 
 // NewApp creates a new App application struct
@@ -22,12 +23,41 @@ func NewApp() *App {
 // so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+	if a.initialWindow.HasPos {
+		runtime.WindowSetPosition(ctx, a.initialWindow.X, a.initialWindow.Y)
+	}
 	store, err := OpenStore()
 	if err != nil {
 		runtime.LogErrorf(ctx, "ouverture de la base de données: %v", err)
 		return
 	}
 	a.store = store
+}
+
+// beforeClose saves the window geometry and, when a craft is still
+// open, asks for confirmation so kamas restants don't get forgotten.
+func (a *App) beforeClose(ctx context.Context) bool {
+	width, height := runtime.WindowGetSize(ctx)
+	x, y := runtime.WindowGetPosition(ctx)
+	saveWindowState(windowState{Width: width, Height: height, X: x, Y: y, HasPos: true})
+
+	if a.store == nil {
+		return false
+	}
+	n, err := a.store.CountOpenItems()
+	if err != nil || n == 0 {
+		return false
+	}
+	message := fmt.Sprintf("Tu as %d craft(s) en cours. Pense à noter tes kamas restants ! Quitter quand même ?", n)
+	result, err := runtime.MessageDialog(ctx, runtime.MessageDialogOptions{
+		Type:    runtime.QuestionDialog,
+		Title:   "Craft en cours",
+		Message: message,
+	})
+	if err != nil {
+		return false
+	}
+	return result != "Yes"
 }
 
 // shutdown is called when the app closes.
