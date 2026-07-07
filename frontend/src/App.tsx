@@ -1,126 +1,59 @@
-import { useState } from "react";
-import logo from "@/assets/images/logo-universal.png";
-import "@/index.css";
-import { Greet } from "../wailsjs/go/main/App";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useCallback, useEffect, useState } from "react";
+import SummaryCards from "@/components/SummaryCards";
+import ThemeToggle from "@/components/ThemeToggle";
+import TransactionForm from "@/components/TransactionForm";
+import TransactionTable from "@/components/TransactionTable";
+import { GetSummary, ListTransactions } from "../wailsjs/go/main/App";
+import { main } from "../wailsjs/go/models";
 
 function App() {
-  const [resultText, setResultText] = useState("Enter your name to get started!");
-  const [name, setName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [transactions, setTransactions] = useState<main.Transaction[]>([]);
+  const [summary, setSummary] = useState<main.Summary | null>(null);
+  const [error, setError] = useState("");
 
-  async function greet() {
-    if (!name.trim()) {
-      setResultText("Please enter a name first! 🙏");
-      return;
-    }
-
-    setIsLoading(true);
+  const refresh = useCallback(async () => {
     try {
-      const result = await Greet(name);
-      setResultText(result);
-    } catch (error) {
-      setResultText("Oops! Something went wrong. 😕");
-    } finally {
-      setIsLoading(false);
+      const [list, sum] = await Promise.all([ListTransactions(), GetSummary()]);
+      setTransactions(list);
+      setSummary(sum);
+      setError("");
+    } catch (err) {
+      setError(String(err));
     }
-  }
+  }, []);
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      greet();
-    }
-  };
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-50 to-slate-100 flex flex-col items-center justify-center p-8">
-      <div className="w-full max-w-2xl space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <img
-            src={logo}
-            className="w-32 h-32 object-contain mx-auto drop-shadow-lg hover:scale-105 transition-transform"
-            alt="Wails Logo"
-          />
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold tracking-tight text-slate-900">
-              Welcome to Wails!
-            </h1>
-            <p className="text-slate-600 text-lg">
-              React + TypeScript + Vite + Tailwind CSS v4 + shadcn/ui
-            </p>
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-5xl mx-auto space-y-6">
+        <header className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            Kompta
+          </h1>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-muted-foreground">Comptabilité Dofus</p>
+            <ThemeToggle />
           </div>
-        </div>
+        </header>
 
-        {/* Main Card */}
-        <Card className="shadow-xl border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-2xl">Greet Function Demo</CardTitle>
-            <CardDescription>
-              Try out the Go backend integration by entering your name below
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-base">
-                Your Name
-              </Label>
-              <Input
-                id="name"
-                placeholder="Enter your name..."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyPress={handleKeyPress}
-                disabled={isLoading}
-                className="text-base h-11"
-              />
-            </div>
-            <div className="p-6 bg-slate-50 rounded-lg border border-slate-200 min-h-20 flex items-center justify-center">
-              <p className="text-center font-medium text-slate-900 text-lg">
-                {resultText}
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter className="flex gap-3">
-            <Button
-              onClick={greet}
-              disabled={isLoading}
-              className="flex-1 h-11 text-base"
-            >
-              {isLoading ? "Greeting..." : "Greet Me! 👋"}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setName("");
-                setResultText("Enter your name to get started!");
-              }}
-              disabled={isLoading}
-              className="h-11"
-            >
-              Clear
-            </Button>
-          </CardFooter>
-        </Card>
+        {error && (
+          <div className="p-3 rounded-md bg-red-50 border border-red-200 text-sm text-red-700 dark:bg-red-950/50 dark:border-red-900 dark:text-red-400">
+            {error}
+          </div>
+        )}
 
-        {/* Footer */}
-        <div className="text-center space-y-2">
-          <p className="text-sm text-slate-600">
-            Built with ❤️ using Wails v2.11.0
-          </p>
-          <p className="text-xs text-slate-500">
-            Go backend • React frontend • Native desktop app
-          </p>
+        <SummaryCards summary={summary} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 items-start">
+          <TransactionForm onAdded={refresh} />
+          <TransactionTable
+            transactions={transactions}
+            onChanged={refresh}
+            onError={setError}
+          />
         </div>
       </div>
     </div>
