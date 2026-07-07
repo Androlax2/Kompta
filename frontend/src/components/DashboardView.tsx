@@ -1,4 +1,6 @@
 import { Button } from "@/components/ui/button";
+import { BalanceChart, MonthlyBreakdown } from "@/components/BalanceChart";
+import CraftRanking from "@/components/CraftRanking";
 import ItemCard from "@/components/ItemCard";
 import StatsHeader from "@/components/StatsHeader";
 import TransactionTable from "@/components/TransactionTable";
@@ -9,6 +11,7 @@ interface DashboardViewProps {
   activities: main.ActivityWithStats[];
   transactions: main.Transaction[];
   openItems: main.ItemWithStats[];
+  allItems: main.ItemWithStats[];
   activityNames: Map<number, string>;
   onOpenActivity: (id: number) => void;
   onChanged: () => void;
@@ -20,6 +23,7 @@ function DashboardView({
   activities,
   transactions,
   openItems,
+  allItems,
   activityNames,
   onOpenActivity,
   onChanged,
@@ -28,6 +32,13 @@ function DashboardView({
   return (
     <div className="space-y-8">
       <StatsHeader heroLabel="Solde total" stats={summary} />
+
+      {transactions.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-3 items-start">
+          <BalanceChart transactions={transactions} />
+          <MonthlyBreakdown transactions={transactions} />
+        </div>
+      )}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -66,6 +77,15 @@ function DashboardView({
           </div>
         )}
       </section>
+
+      <CraftRanking
+        items={allItems}
+        activityNames={activityNames}
+        onOpenActivity={onOpenActivity}
+        limit={5}
+        onChanged={onChanged}
+        onError={onError}
+      />
 
       <TransactionTable
         transactions={transactions}

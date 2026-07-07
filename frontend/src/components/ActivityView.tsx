@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import CraftRanking from "@/components/CraftRanking";
 import ItemCard from "@/components/ItemCard";
 import NewItemForm from "@/components/NewItemForm";
 import StatsHeader from "@/components/StatsHeader";
@@ -112,6 +113,8 @@ function ActivityView({
           </div>
         </section>
       )}
+
+      <CraftRanking items={items} onChanged={onChanged} onError={onError} />
 
       <TransactionTable
         transactions={transactions}

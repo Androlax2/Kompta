@@ -83,12 +83,14 @@ function App() {
     [activities]
   );
 
-  const openItems = useMemo(
-    () =>
-      activities.flatMap((a) =>
-        (itemsByActivity.get(a.id) ?? []).filter((i) => !i.done)
-      ),
+  const allItems = useMemo(
+    () => activities.flatMap((a) => itemsByActivity.get(a.id) ?? []),
     [activities, itemsByActivity]
+  );
+
+  const openItems = useMemo(
+    () => allItems.filter((i) => !i.done),
+    [allItems]
   );
 
   const activeActivity =
@@ -169,6 +171,7 @@ function App() {
             activities={activities}
             transactions={transactions}
             openItems={openItems}
+            allItems={allItems}
             activityNames={activityNames}
             onOpenActivity={setTab}
             onChanged={refresh}

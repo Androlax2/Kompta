@@ -53,6 +53,13 @@ func (a *App) AddTransaction(t Transaction) (Transaction, error) {
 	return a.store.Add(t)
 }
 
+func (a *App) UpdateTransaction(t Transaction) (Transaction, error) {
+	if a.store == nil {
+		return Transaction{}, errNoStore
+	}
+	return a.store.Update(t)
+}
+
 func (a *App) DeleteTransaction(id int64) error {
 	if a.store == nil {
 		return errNoStore
@@ -102,11 +109,17 @@ func (a *App) ListItems(activityID int64) ([]ItemWithStats, error) {
 	return a.store.ListItems(activityID)
 }
 
-func (a *App) AddItem(activityID int64, name string, startKamas int64) (Item, error) {
+func (a *App) AddItem(activityID int64, name string, startKamas int64, imgURL string) (Item, error) {
 	if a.store == nil {
 		return Item{}, errNoStore
 	}
-	return a.store.AddItem(activityID, name, startKamas)
+	return a.store.AddItem(activityID, name, startKamas, imgURL)
+}
+
+// SearchDofusItems proxies the DofusDB item search (done backend-side
+// so the webview never deals with CORS).
+func (a *App) SearchDofusItems(query string) ([]DofusItem, error) {
+	return SearchDofusItems(query)
 }
 
 func (a *App) FinishItem(id int64, endKamas int64) error {

@@ -2,6 +2,8 @@ package main
 
 import (
 	"database/sql"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -299,22 +301,25 @@ func TestItemLifecycle(t *testing.T) {
 	store := openTestStore(t)
 	fm := findActivity(t, store, "Forgemagie")
 
-	if _, err := store.AddItem(fm.ID, "   ", 1000); err == nil {
+	if _, err := store.AddItem(fm.ID, "   ", 1000, ""); err == nil {
 		t.Error("expected error for empty item name")
 	}
-	if _, err := store.AddItem(fm.ID, "Coiffe", -5); err == nil {
+	if _, err := store.AddItem(fm.ID, "Coiffe", -5, ""); err == nil {
 		t.Error("expected error for negative start kamas")
 	}
-	if _, err := store.AddItem(999, "Coiffe", 1000); err == nil {
+	if _, err := store.AddItem(999, "Coiffe", 1000, ""); err == nil {
 		t.Error("expected error for missing activity")
 	}
 
-	item, err := store.AddItem(fm.ID, "  Coiffe Moon +40 fo  ", 1000000)
+	item, err := store.AddItem(fm.ID, "  Coiffe Moon +40 fo  ", 1000000, "https://api.dofusdb.fr/img/items/16002.png")
 	if err != nil {
 		t.Fatalf("AddItem: %v", err)
 	}
 	if item.Name != "Coiffe Moon +40 fo" || item.Done || item.StartKamas != 1000000 {
 		t.Errorf("unexpected item: %+v", item)
+	}
+	if item.ImgURL != "https://api.dofusdb.fr/img/items/16002.png" {
+		t.Errorf("expected img URL round-trip, got %q", item.ImgURL)
 	}
 
 	items, err := store.ListItems(fm.ID)
@@ -379,7 +384,7 @@ func TestItemLifecycle(t *testing.T) {
 func TestFinishItemNoDifference(t *testing.T) {
 	store := openTestStore(t)
 	fm := findActivity(t, store, "Forgemagie")
-	item, _ := store.AddItem(fm.ID, "Rien dépensé", 500)
+	item, _ := store.AddItem(fm.ID, "Rien dépensé", 500, "")
 	if err := store.FinishItem(item.ID, 500); err != nil {
 		t.Fatalf("FinishItem: %v", err)
 	}
@@ -396,7 +401,7 @@ func TestFinishItemNoDifference(t *testing.T) {
 func TestDeleteItemUntags(t *testing.T) {
 	store := openTestStore(t)
 	fm := findActivity(t, store, "Métiers")
-	item, _ := store.AddItem(fm.ID, "Lot de coiffes", 10000)
+	item, _ := store.AddItem(fm.ID, "Lot de coiffes", 10000, "")
 	if err := store.FinishItem(item.ID, 4000); err != nil {
 		t.Fatalf("FinishItem: %v", err)
 	}
@@ -446,5 +451,109 @@ func TestDeleteActivityUntags(t *testing.T) {
 	}
 	if err := store.DeleteActivity(999); err == nil {
 		t.Error("expected error for missing id")
+	}
+}
+
+func TestUpdateTransaction(t *testing.T) {
+	store := openTestStore(t)
+	fm := findActivity(t, store, "Forgemagie")
+
+	orig, err := store.Add(Transaction{Date: "2026-07-01", Amount: 100000, Category: "Vente", Note: "avant", ActivityID: fm.ID})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	orig.Date = "2026-07-05"
+	orig.Amount = -250000
+	orig.Category = "Achat"
+	orig.Note = "après"
+	saved, err := store.Update(orig)
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if saved.Date != "2026-07-05" || saved.Amount != -250000 || saved.Category != "Achat" || saved.Note != "après" {
+		t.Errorf("unexpected updated transaction: %+v", saved)
+	}
+	if saved.ActivityID != fm.ID || saved.CreatedAt == "" {
+		t.Errorf("expected tags and createdAt preserved, got %+v", saved)
+	}
+
+	sum, _ := store.Summary()
+	if sum.Balance != -250000 || sum.Count != 1 {
+		t.Errorf("expected summary to reflect update, got %+v", sum)
+	}
+}
+
+func TestUpdateValidation(t *testing.T) {
+	store := openTestStore(t)
+	orig, err := store.Add(Transaction{Amount: 100, Category: "Vente"})
+	if err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+
+	bad := orig
+	bad.Amount = 0
+	if _, err := store.Update(bad); err == nil {
+		t.Error("expected error for zero amount")
+	}
+	bad = orig
+	bad.Category = ""
+	if _, err := store.Update(bad); err == nil {
+		t.Error("expected error for empty category")
+	}
+	bad = orig
+	bad.Date = "07/07/2026"
+	if _, err := store.Update(bad); err == nil {
+		t.Error("expected error for malformed date")
+	}
+	bad = orig
+	bad.ActivityID = 999
+	if _, err := store.Update(bad); err == nil {
+		t.Error("expected error for missing activity")
+	}
+	bad = orig
+	bad.ID = 999
+	if _, err := store.Update(bad); err == nil {
+		t.Error("expected error for missing transaction id")
+	}
+}
+
+func TestSearchDofusItems(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/items" {
+			t.Errorf("unexpected path %q", r.URL.Path)
+		}
+		q := r.URL.Query()
+		if q.Get("name.fr[$regex]") != "coiffe" || q.Get("name.fr[$options]") != "i" || q.Get("$limit") != "8" {
+			t.Errorf("unexpected query params: %v", q)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"total": 2, "limit": 8, "skip": 0, "data": [
+			{"name": {"fr": "La Coiffe du Ploukosse", "en": "Slob Headgear"}, "img": "https://api.dofusdb.fr/img/items/16002.png", "level": 60},
+			{"name": {"fr": ""}, "img": "ignored.png", "level": 1}
+		]}`))
+	}))
+	defer server.Close()
+
+	items, err := searchDofusItems(server.URL, "coiffe")
+	if err != nil {
+		t.Fatalf("searchDofusItems: %v", err)
+	}
+	if len(items) != 1 {
+		t.Fatalf("expected 1 item (empty names skipped), got %d", len(items))
+	}
+	if items[0].Name != "La Coiffe du Ploukosse" || items[0].ImgURL != "https://api.dofusdb.fr/img/items/16002.png" || items[0].Level != 60 {
+		t.Errorf("unexpected item: %+v", items[0])
+	}
+}
+
+func TestSearchDofusItemsErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	if _, err := searchDofusItems(server.URL, "coiffe"); err == nil {
+		t.Error("expected error for HTTP 500")
 	}
 }

@@ -24,6 +24,22 @@ export namespace main {
 	        this.count = source["count"];
 	    }
 	}
+	export class DofusItem {
+	    name: string;
+	    imgUrl: string;
+	    level: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DofusItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.imgUrl = source["imgUrl"];
+	        this.level = source["level"];
+	    }
+	}
 	export class Item {
 	    id: number;
 	    activityId: number;
@@ -31,6 +47,7 @@ export namespace main {
 	    startKamas: number;
 	    endKamas: number;
 	    done: boolean;
+	    imgUrl: string;
 	    createdAt: string;
 	
 	    static createFrom(source: any = {}) {
@@ -45,6 +62,7 @@ export namespace main {
 	        this.startKamas = source["startKamas"];
 	        this.endKamas = source["endKamas"];
 	        this.done = source["done"];
+	        this.imgUrl = source["imgUrl"];
 	        this.createdAt = source["createdAt"];
 	    }
 	}
@@ -55,6 +73,7 @@ export namespace main {
 	    startKamas: number;
 	    endKamas: number;
 	    done: boolean;
+	    imgUrl: string;
 	    createdAt: string;
 	    spent: number;
 	    sales: number;
@@ -73,6 +92,7 @@ export namespace main {
 	        this.startKamas = source["startKamas"];
 	        this.endKamas = source["endKamas"];
 	        this.done = source["done"];
+	        this.imgUrl = source["imgUrl"];
 	        this.createdAt = source["createdAt"];
 	        this.spent = source["spent"];
 	        this.sales = source["sales"];

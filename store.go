@@ -56,6 +56,7 @@ type Item struct {
 	StartKamas int64  `json:"startKamas"`
 	EndKamas   int64  `json:"endKamas"` // meaningful only when Done
 	Done       bool   `json:"done"`
+	ImgURL     string `json:"imgUrl"`
 	CreatedAt  string `json:"createdAt"`
 }
 
@@ -68,6 +69,7 @@ type ItemWithStats struct {
 	StartKamas int64  `json:"startKamas"`
 	EndKamas   int64  `json:"endKamas"`
 	Done       bool   `json:"done"`
+	ImgURL     string `json:"imgUrl"`
 	CreatedAt  string `json:"createdAt"`
 	Spent      int64  `json:"spent"`
 	Sales      int64  `json:"sales"`
@@ -111,6 +113,7 @@ CREATE TABLE IF NOT EXISTS items (
     name        TEXT    NOT NULL,
     start_kamas INTEGER NOT NULL,
     end_kamas   INTEGER,
+    img_url     TEXT    NOT NULL DEFAULT '',
     created_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
 `
@@ -134,6 +137,18 @@ func migrate(db *sql.DB) error {
 				"ALTER TABLE transactions ADD COLUMN " + col + " INTEGER NOT NULL DEFAULT 0"); err != nil {
 				return err
 			}
+		}
+	}
+	var hasImgURL int
+	if err := db.QueryRow(
+		"SELECT COUNT(*) FROM pragma_table_info('items') WHERE name = 'img_url'").
+		Scan(&hasImgURL); err != nil {
+		return err
+	}
+	if hasImgURL == 0 {
+		if _, err := db.Exec(
+			"ALTER TABLE items ADD COLUMN img_url TEXT NOT NULL DEFAULT ''"); err != nil {
+			return err
 		}
 	}
 	if _, err := db.Exec(`
@@ -216,7 +231,9 @@ func (s *Store) ListByActivity(activityID int64) ([]Transaction, error) {
 		activityID)
 }
 
-func (s *Store) Add(t Transaction) (Transaction, error) {
+// validateTransaction normalizes and checks a transaction's fields
+// (shared by Add and Update). Returns t with the date defaulted.
+func (s *Store) validateTransaction(t Transaction) (Transaction, error) {
 	if t.Amount == 0 {
 		return Transaction{}, fmt.Errorf("le montant ne peut pas être nul")
 	}
@@ -248,6 +265,22 @@ func (s *Store) Add(t Transaction) (Transaction, error) {
 			return Transaction{}, fmt.Errorf("objet introuvable (id %d)", t.ItemID)
 		}
 	}
+	return t, nil
+}
+
+func (s *Store) getTransaction(id int64) (Transaction, error) {
+	var t Transaction
+	err := s.db.QueryRow(
+		"SELECT "+transactionColumns+" FROM transactions WHERE id = ?", id).
+		Scan(&t.ID, &t.Date, &t.Amount, &t.Category, &t.Note, &t.ActivityID, &t.ItemID, &t.CreatedAt)
+	return t, err
+}
+
+func (s *Store) Add(t Transaction) (Transaction, error) {
+	t, err := s.validateTransaction(t)
+	if err != nil {
+		return Transaction{}, err
+	}
 
 	res, err := s.db.Exec(
 		"INSERT INTO transactions (date, amount, category, note, activity_id, item_id) VALUES (?, ?, ?, ?, ?, ?)",
@@ -259,15 +292,29 @@ func (s *Store) Add(t Transaction) (Transaction, error) {
 	if err != nil {
 		return Transaction{}, err
 	}
+	return s.getTransaction(id)
+}
 
-	var saved Transaction
-	err = s.db.QueryRow(
-		"SELECT "+transactionColumns+" FROM transactions WHERE id = ?", id).
-		Scan(&saved.ID, &saved.Date, &saved.Amount, &saved.Category, &saved.Note, &saved.ActivityID, &saved.ItemID, &saved.CreatedAt)
+func (s *Store) Update(t Transaction) (Transaction, error) {
+	t, err := s.validateTransaction(t)
 	if err != nil {
 		return Transaction{}, err
 	}
-	return saved, nil
+
+	res, err := s.db.Exec(
+		"UPDATE transactions SET date = ?, amount = ?, category = ?, note = ?, activity_id = ?, item_id = ? WHERE id = ?",
+		t.Date, t.Amount, t.Category, t.Note, t.ActivityID, t.ItemID, t.ID)
+	if err != nil {
+		return Transaction{}, err
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return Transaction{}, err
+	}
+	if affected == 0 {
+		return Transaction{}, fmt.Errorf("transaction introuvable (id %d)", t.ID)
+	}
+	return s.getTransaction(t.ID)
 }
 
 func (s *Store) Delete(id int64) error {
@@ -428,7 +475,7 @@ func (s *Store) DeleteActivity(id int64) error {
 	return tx.Commit()
 }
 
-func (s *Store) AddItem(activityID int64, name string, startKamas int64) (Item, error) {
+func (s *Store) AddItem(activityID int64, name string, startKamas int64, imgURL string) (Item, error) {
 	name = strings.TrimSpace(name)
 	if name == "" {
 		return Item{}, fmt.Errorf("le nom de l'objet est obligatoire")
@@ -446,8 +493,8 @@ func (s *Store) AddItem(activityID int64, name string, startKamas int64) (Item, 
 	}
 
 	res, err := s.db.Exec(
-		"INSERT INTO items (activity_id, name, start_kamas) VALUES (?, ?, ?)",
-		activityID, name, startKamas)
+		"INSERT INTO items (activity_id, name, start_kamas, img_url) VALUES (?, ?, ?, ?)",
+		activityID, name, startKamas, imgURL)
 	if err != nil {
 		return Item{}, err
 	}
@@ -459,8 +506,8 @@ func (s *Store) AddItem(activityID int64, name string, startKamas int64) (Item, 
 	var saved Item
 	var endKamas sql.NullInt64
 	err = s.db.QueryRow(
-		"SELECT id, activity_id, name, start_kamas, end_kamas, created_at FROM items WHERE id = ?", id).
-		Scan(&saved.ID, &saved.ActivityID, &saved.Name, &saved.StartKamas, &endKamas, &saved.CreatedAt)
+		"SELECT id, activity_id, name, start_kamas, end_kamas, img_url, created_at FROM items WHERE id = ?", id).
+		Scan(&saved.ID, &saved.ActivityID, &saved.Name, &saved.StartKamas, &endKamas, &saved.ImgURL, &saved.CreatedAt)
 	if err != nil {
 		return Item{}, err
 	}
@@ -471,7 +518,7 @@ func (s *Store) AddItem(activityID int64, name string, startKamas int64) (Item, 
 
 func (s *Store) ListItems(activityID int64) ([]ItemWithStats, error) {
 	rows, err := s.db.Query(`
-		SELECT i.id, i.activity_id, i.name, i.start_kamas, i.end_kamas, i.created_at,
+		SELECT i.id, i.activity_id, i.name, i.start_kamas, i.end_kamas, i.img_url, i.created_at,
 		       COALESCE(-SUM(CASE WHEN t.amount < 0 THEN t.amount END), 0),
 		       COALESCE(SUM(CASE WHEN t.amount > 0 THEN t.amount END), 0),
 		       COALESCE(SUM(t.amount), 0),
@@ -490,7 +537,7 @@ func (s *Store) ListItems(activityID int64) ([]ItemWithStats, error) {
 	for rows.Next() {
 		var it ItemWithStats
 		var endKamas sql.NullInt64
-		if err := rows.Scan(&it.ID, &it.ActivityID, &it.Name, &it.StartKamas, &endKamas, &it.CreatedAt,
+		if err := rows.Scan(&it.ID, &it.ActivityID, &it.Name, &it.StartKamas, &endKamas, &it.ImgURL, &it.CreatedAt,
 			&it.Spent, &it.Sales, &it.Balance, &it.Count); err != nil {
 			return nil, err
 		}
